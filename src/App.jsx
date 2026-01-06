@@ -19,7 +19,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(FIREBASE_CONFIG);
+const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
 const MT5Dashboard = () => {
