@@ -34,11 +34,11 @@ function App() {
   }, []);
 
   if (loading) {
-    return <div style={{padding: '20px'}}>Loading...</div>;
+    return <div style={{padding: "20px"}}>Loading...</div>;
   }
 
   return (
-    <div style={{padding: '20px', fontFamily: 'Arial, sans-serif'}}>
+    <div style={{padding: "20px", fontFamily: "Arial, sans-serif"}}>
       <h1>MT5 Dashboard</h1>
       <p>VPS Count: {vpsData.length}</p>
       
@@ -50,21 +50,21 @@ function App() {
       ) : (
         <div>
           {vpsData.map(vps => (
-            <div key={vps.id} style={{border: '1px solid #ccc', padding: '15px', marginBottom: '15px', borderRadius: '5px'}}>
+            <div key={vps.id} style={{border: "1px solid #ccc", padding: "15px", marginBottom: "15px", borderRadius: "5px"}}>
               <h2>{vps.name}</h2>
               <p>Status: {vps.status}</p>
               <p>Accounts: {vps.accounts ? vps.accounts.length : 0}</p>
               
               {vps.accounts && vps.accounts.map(acc => (
-                <div key={acc.id} style={{marginLeft: '20px', marginTop: '10px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '3px'}}>
+                <div key={acc.id} style={{marginLeft: "20px", marginTop: "10px", padding: "10px", backgroundColor: "#f5f5f5", borderRadius: "3px"}}>
                   <h3>Account: {acc.accountNumber}</h3>
                   <p>Broker: {acc.broker}</p>
-                  <p>Equity: ${acc.equity ? acc.equity.toFixed(2) : '0.00'}</p>
-                  <p>P&L Today: ${acc.pnlToday ? acc.pnlToday.toFixed(2) : '0.00'}</p>
+                  <p>Equity: ${acc.equity ? acc.equity.toFixed(2) : "0.00"}</p>
+                  <p>P&L Today: ${acc.pnlToday ? acc.pnlToday.toFixed(2) : "0.00"}</p>
                   <p>Bots: {acc.bots ? acc.bots.length : 0}</p>
                   
                   {acc.bots && acc.bots.map(bot => (
-                    <div key={bot.id} style={{marginLeft: '20px', marginTop: '8px', fontSize: '14px'}}>
+                    <div key={bot.id} style={{marginLeft: "20px", marginTop: "8px", fontSize: "14px"}}>
                       <strong>{bot.name}</strong> - Magic: {bot.magicNumber} - Status: {bot.status}
                     </div>
                   ))}
@@ -75,7 +75,7 @@ function App() {
         </div>
       )}
       
-      <p style={{marginTop: '30px', fontSize: '12px', color: '#666'}}>
+      <p style={{marginTop: "30px", fontSize: "12px", color: "#666"}}>
         Last update: {new Date().toLocaleString()}
       </p>
     </div>
