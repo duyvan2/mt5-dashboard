@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { TrendingUp, TrendingDown, Activity, AlertCircle, Server, DollarSign, Target, Percent } from 'lucide-react';
@@ -24,10 +23,11 @@ const database = getDatabase(app);
 
 const MT5Dashboard = () => {
   const [vpsData, setVpsData] = useState([]);
-  const [selectedVps, setSelectedVps] = useState(null);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [filterVps, setFilterVps] = useState('all');
+  const [sortBy, setSortBy] = useState('equity');
   const [totalStats, setTotalStats] = useState({
     totalEquity: 0,
     totalPnLToday: 0,
@@ -46,13 +46,11 @@ const MT5Dashboard = () => {
       try {
         const data = snapshot.val();
         if (data) {
-          // Convert object to array
           const vpsArray = Object.values(data);
           setVpsData(vpsArray);
           calculateTotalStats(vpsArray);
           setError(null);
         } else {
-          // No data yet - show demo data
           const demoData = generateDemoData();
           setVpsData(demoData);
           calculateTotalStats(demoData);
@@ -189,6 +187,28 @@ const MT5Dashboard = () => {
     });
   };
 
+  // Flatten all accounts with VPS info
+  const allAccounts = vpsData.flatMap(vps => 
+    vps.accounts.map(account => ({
+      ...account,
+      vpsId: vps.id,
+      vpsName: vps.name,
+      vpsStatus: vps.status
+    }))
+  );
+
+  // Filter and sort accounts
+  const filteredAccounts = allAccounts
+    .filter(acc => filterVps === 'all' || acc.vpsId === filterVps)
+    .sort((a, b) => {
+      switch(sortBy) {
+        case 'equity': return (b.equity || 0) - (a.equity || 0);
+        case 'pnl': return (b.pnlToday || 0) - (a.pnlToday || 0);
+        case 'drawdown': return (a.drawdown || 0) - (b.drawdown || 0);
+        default: return 0;
+      }
+    });
+
   const StatCard = ({ title, value, subtitle, icon: Icon, color, trend }) => (
     <div className="bg-white rounded-lg shadow p-6 border-l-4" style={{ borderLeftColor: color }}>
       <div className="flex items-center justify-between">
@@ -216,54 +236,6 @@ const MT5Dashboard = () => {
     </div>
   );
 
-  const VpsCard = ({ vps }) => {
-    const vpsEquity = vps.accounts.reduce((sum, acc) => sum + (acc.equity || 0), 0);
-    const vpsPnl = vps.accounts.reduce((sum, acc) => sum + (acc.pnlToday || 0), 0);
-    const isProfit = vpsPnl >= 0;
-
-    return (
-      <div 
-        className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer p-4 border"
-        onClick={() => setSelectedVps(vps)}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center">
-            <Server size={20} className="text-blue-500 mr-2" />
-            <h3 className="font-semibold text-lg">{vps.name}</h3>
-          </div>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            vps.status === 'online' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-          }`}>
-            {vps.status}
-          </span>
-        </div>
-        
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Equity:</span>
-            <span className="font-semibold">${vpsEquity.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">P&L Today:</span>
-            <span className={`font-semibold ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
-              {isProfit ? '+' : ''}{vpsPnl.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Accounts:</span>
-            <span className="font-semibold">{vps.accounts.length}</span>
-          </div>
-        </div>
-        
-        <div className="mt-3 pt-3 border-t">
-          <p className="text-xs text-gray-500">
-            Last update: {new Date(vps.lastUpdate).toLocaleTimeString('vi-VN')}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
   const AccountDetails = ({ account, vpsName }) => {
     const isProfit = (account.pnlToday || 0) >= 0;
     
@@ -276,7 +248,7 @@ const MT5Dashboard = () => {
           </div>
           <button 
             onClick={() => setSelectedAccount(null)}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gray-700 font-medium"
           >
             ← Back
           </button>
@@ -380,88 +352,9 @@ const MT5Dashboard = () => {
   }
 
   if (selectedAccount) {
-    const vps = vpsData.find(v => v.accounts.some(a => a.id === selectedAccount.id));
     return (
       <div className="min-h-screen bg-gray-50 p-4">
-        <AccountDetails account={selectedAccount} vpsName={vps?.name || 'VPS'} />
-      </div>
-    );
-  }
-
-  if (selectedVps) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <button 
-              onClick={() => setSelectedVps(null)}
-              className="text-blue-600 hover:text-blue-700 font-medium"
-            >
-              ← Back to Overview
-            </button>
-            <h1 className="text-3xl font-bold mt-2">{selectedVps.name}</h1>
-            <p className="text-gray-600">Managing {selectedVps.accounts.length} MT5 accounts</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {selectedVps.accounts.map(account => {
-              const isProfit = (account.pnlToday || 0) >= 0;
-              return (
-                <div 
-                  key={account.id}
-                  className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer p-6"
-                  onClick={() => setSelectedAccount(account)}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-lg">Account {account.accountNumber}</h3>
-                    <DollarSign size={20} className="text-green-500" />
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm text-gray-600">Equity</p>
-                      <p className="text-2xl font-bold text-blue-600">${(account.equity || 0).toFixed(2)}</p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-gray-600">Today</p>
-                        <p className={`font-semibold ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
-                          {isProfit ? '+' : ''}{(account.pnlToday || 0).toFixed(2)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-600">Week</p>
-                        <p className={`font-semibold ${(account.pnlWeek || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {(account.pnlWeek || 0) >= 0 ? '+' : ''}{(account.pnlWeek || 0).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Drawdown:</span>
-                        <span className="font-semibold text-orange-600">{(account.drawdown || 0).toFixed(1)}%</span>
-                      </div>
-                      <div className="flex justify-between text-sm mt-1">
-                        <span className="text-gray-600">Open Positions:</span>
-                        <span className="font-semibold">{account.openPositions || 0}</span>
-                      </div>
-                      <div className="flex justify-between text-sm mt-1">
-                        <span className="text-gray-600">Active Bots:</span>
-                        <span className="font-semibold">{(account.bots || []).filter(b => b.status === 'active').length}/{(account.bots || []).length}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button className="w-full mt-4 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors">
-                    View Details →
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <AccountDetails account={selectedAccount} vpsName={selectedAccount.vpsName || 'VPS'} />
       </div>
     );
   }
@@ -471,7 +364,7 @@ const MT5Dashboard = () => {
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 shadow-lg">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold">MT5 Bot Trading Dashboard</h1>
-          <p className="text-blue-100 mt-1">Real-time monitoring for {vpsData.length} VPS • {vpsData.reduce((sum, vps) => sum + vps.accounts.length, 0)} Accounts</p>
+          <p className="text-blue-100 mt-1">Real-time monitoring for {vpsData.length} VPS • {allAccounts.length} Accounts</p>
           {error && (
             <div className="mt-2 bg-yellow-500 text-white px-3 py-1 rounded text-sm">
               ⚠️ {error}
@@ -481,6 +374,7 @@ const MT5Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto p-6">
+        {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <StatCard 
             title="Total Equity"
@@ -511,85 +405,151 @@ const MT5Dashboard = () => {
           />
         </div>
 
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-4">VPS Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {vpsData.map(vps => (
-              <VpsCard key={vps.id} vps={vps} />
-            ))}
+        {/* Filter & Sort Controls */}
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div>
+                <label className="text-sm text-gray-600 mr-2">Filter by VPS:</label>
+                <select 
+                  value={filterVps}
+                  onChange={(e) => setFilterVps(e.target.value)}
+                  className="border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All VPS ({vpsData.length})</option>
+                  {vpsData.map(vps => (
+                    <option key={vps.id} value={vps.id}>
+                      {vps.name} ({vps.accounts.length})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-600 mr-2">Sort by:</label>
+                <select 
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="equity">Equity (High to Low)</option>
+                  <option value="pnl">P&L Today (High to Low)</option>
+                  <option value="drawdown">Drawdown (Low to High)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="text-sm text-gray-600">
+              Showing <span className="font-semibold text-blue-600">{filteredAccounts.length}</span> accounts
+            </div>
           </div>
         </div>
 
+        {/* All Accounts Grid */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-4">All Trading Accounts</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredAccounts.map(account => {
+              const isProfit = (account.pnlToday || 0) >= 0;
+              const activeBots = (account.bots || []).filter(b => b.status === 'active').length;
+              const totalBots = (account.bots || []).length;
+
+              return (
+                <div 
+                  key={account.id}
+                  className="bg-white rounded-lg shadow hover:shadow-xl transition-all cursor-pointer border-2 border-transparent hover:border-blue-400"
+                  onClick={() => setSelectedAccount(account)}
+                >
+                  {/* Header with VPS Badge */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-t-lg border-b">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-bold text-lg">#{account.accountNumber}</h3>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+                        account.vpsStatus === 'online' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        <Server size={12} />
+                        {account.vpsName}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">{account.broker}</p>
+                  </div>
+
+                  {/* Main Stats */}
+                  <div className="p-4">
+                    <div className="mb-4">
+                      <p className="text-xs text-gray-500 mb-1">EQUITY</p>
+                      <p className="text-2xl font-bold text-blue-600">${(account.equity || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div>
+                        <p className="text-xs text-gray-500">Today</p>
+                        <p className={`font-bold text-sm ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
+                          {isProfit ? '+' : ''}{(account.pnlToday || 0).toFixed(0)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Week</p>
+                        <p className={`font-bold text-sm ${(account.pnlWeek || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {(account.pnlWeek || 0) >= 0 ? '+' : ''}{(account.pnlWeek || 0).toFixed(0)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Drawdown</p>
+                        <p className="font-bold text-sm text-orange-600">{(account.drawdown || 0).toFixed(1)}%</p>
+                      </div>
+                    </div>
+
+                    {/* Bot & Position Info */}
+                    <div className="pt-3 border-t space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600 flex items-center gap-1">
+                          <Activity size={14} />
+                          Bots
+                        </span>
+                        <span className="font-semibold">
+                          <span className="text-green-600">{activeBots}</span>
+                          <span className="text-gray-400">/{totalBots}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Positions</span>
+                        <span className="font-semibold text-purple-600">{account.openPositions || 0}</span>
+                      </div>
+                    </div>
+
+                    {/* View Details Button */}
+                    <button className="w-full mt-4 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
+                      View Details →
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Compact VPS Overview */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold mb-4">Performance Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <h3 className="text-sm font-medium text-gray-600 mb-3">P&L by Period</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Today:</span>
-                  <span className={`font-semibold ${parseFloat(totalStats.totalPnLToday) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${totalStats.totalPnLToday}
-                  </span>
+          <h2 className="text-xl font-bold mb-4">VPS Status</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {vpsData.map(vps => {
+              const vpsEquity = vps.accounts.reduce((sum, acc) => sum + (acc.equity || 0), 0);
+              const vpsPnl = vps.accounts.reduce((sum, acc) => sum + (acc.pnlToday || 0), 0);
+              return (
+                <div key={vps.id} className="border rounded-lg p-3 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold text-sm">{vps.name}</span>
+                    <span className={`w-2 h-2 rounded-full ${vps.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  </div>
+                  <p className="text-xs text-gray-600">{vps.accounts.length} accounts</p>
+                  <p className="text-sm font-semibold mt-1">${vpsEquity.toFixed(0)}</p>
+                  <p className={`text-xs font-medium ${vpsPnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {vpsPnl >= 0 ? '+' : ''}{vpsPnl.toFixed(0)} today
+                  </p>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">This Week:</span>
-                  <span className={`font-semibold ${parseFloat(totalStats.totalPnLWeek) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${totalStats.totalPnLWeek}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">This Month:</span>
-                  <span className={`font-semibold ${parseFloat(totalStats.totalPnLMonth) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${totalStats.totalPnLMonth}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium text-gray-600 mb-3">Active Status</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">VPS Online:</span>
-                  <span className="font-semibold text-green-600">
-                    {vpsData.filter(v => v.status === 'online').length}/{vpsData.length}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Active Bots:</span>
-                  <span className="font-semibold text-blue-600">
-                    {vpsData.reduce((sum, vps) => 
-                      sum + vps.accounts.reduce((accSum, acc) => 
-                        accSum + (acc.bots || []).filter(b => b.status === 'active').length, 0), 0)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Open Positions:</span>
-                  <span className="font-semibold text-purple-600">{totalStats.totalOpenPositions}</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium text-gray-600 mb-3">Risk Metrics</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Avg Drawdown:</span>
-                  <span className="font-semibold text-orange-600">{totalStats.avgDrawdown}%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Win Rate:</span>
-                  <span className="font-semibold text-green-600">{totalStats.avgWinRate}%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Total Accounts:</span>
-                  <span className="font-semibold text-blue-600">
-                    {vpsData.reduce((sum, vps) => sum + vps.accounts.length, 0)}
-                  </span>
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
 
