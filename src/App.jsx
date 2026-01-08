@@ -283,7 +283,6 @@ const MT5Dashboard = () => {
   const AccountDetails = ({ account, vpsName }) => {
     const isProfit = (account.pnlToday || 0) >= 0;
     
-    // Prepare chart data for P&L timeline
     const pnlChartData = [
       { period: 'Today', value: account.pnlToday || 0 },
       { period: 'Week', value: account.pnlWeek || 0 },
@@ -329,7 +328,6 @@ const MT5Dashboard = () => {
           </div>
         </div>
 
-        {/* P&L Timeline Chart */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 mb-6">
           <div className="flex items-center mb-4">
             <Calendar className="text-indigo-600 mr-2" size={20} />
@@ -360,7 +358,6 @@ const MT5Dashboard = () => {
             </BarChart>
           </ResponsiveContainer>
 
-          {/* Detailed P&L Grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
             {pnlChartData.map((item, idx) => {
               const isPositive = item.value >= 0;
@@ -475,38 +472,61 @@ const MT5Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto p-6">
-        {/* Enhanced Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard 
             title="Total Equity"
-            value={`$${totalStats.totalEquity}`}
+            value={`$${parseFloat(totalStats.totalEquity).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
             icon={DollarSign}
             color="#10b981"
           />
+          
+          <div className="md:col-span-2 bg-white rounded-lg shadow p-6 border-l-4 border-blue-600">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-blue-100 mr-3">
+                  <TrendingUp size={24} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">P&L Performance Overview</p>
+                  <p className="text-xs text-gray-500 mt-0.5">All time periods</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Today', value: totalStats.totalPnLToday },
+                { label: 'Week', value: totalStats.totalPnLWeek },
+                { label: 'Month', value: totalStats.totalPnLMonth },
+                { label: '3 Months', value: totalStats.totalPnL3Months },
+                { label: 'Year', value: totalStats.totalPnLYear },
+                { label: 'All-time', value: totalStats.totalPnLAllTime }
+              ].map((item, idx) => {
+                const value = parseFloat(item.value);
+                const isPositive = value >= 0;
+                const colorClass = isPositive ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700';
+                
+                return (
+                  <div key={idx} className={`rounded-lg p-3 border ${colorClass}`}>
+                    <p className="text-xs opacity-70 mb-1">{item.label}</p>
+                    <p className="font-bold text-lg">
+                      {isPositive ? '+' : ''}${Math.abs(value).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
           <StatCard 
-            title="P&L Today"
-            value={`${parseFloat(totalStats.totalPnLToday) >= 0 ? '+' : ''}$${totalStats.totalPnLToday}`}
-            subtitle={`Month: ${parseFloat(totalStats.totalPnLMonth) >= 0 ? '+' : ''}$${totalStats.totalPnLMonth}`}
-            icon={TrendingUp}
-            color={parseFloat(totalStats.totalPnLToday) >= 0 ? '#10b981' : '#ef4444'}
-          />
-          <StatCard 
-            title="P&L Year"
-            value={`${parseFloat(totalStats.totalPnLYear) >= 0 ? '+' : ''}$${totalStats.totalPnLYear}`}
-            subtitle={`All-time: ${parseFloat(totalStats.totalPnLAllTime) >= 0 ? '+' : ''}$${totalStats.totalPnLAllTime}`}
-            icon={Calendar}
-            color="#8b5cf6"
-          />
-          <StatCard 
-            title="Avg Drawdown"
+            title="Risk & Activity"
             value={`${totalStats.avgDrawdown}%`}
-            subtitle={`${totalStats.totalOpenPositions} open positions`}
+            subtitle={`${totalStats.totalOpenPositions} open positions • ${totalStats.avgWinRate}% avg win rate`}
             icon={AlertCircle}
             color="#f59e0b"
           />
         </div>
 
-        {/* Filter & Sort Controls */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
           <div className="flex flex-wrap gap-4 items-center justify-between">
             <div className="flex items-center gap-4">
@@ -546,7 +566,6 @@ const MT5Dashboard = () => {
           </div>
         </div>
 
-        {/* All Accounts Grid */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-4">All Trading Accounts</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -561,7 +580,6 @@ const MT5Dashboard = () => {
                   className="bg-white rounded-lg shadow hover:shadow-xl transition-all cursor-pointer border-2 border-transparent hover:border-blue-400"
                   onClick={() => setSelectedAccount(account)}
                 >
-                  {/* Header with VPS Badge */}
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-t-lg border-b">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-bold text-lg">#{account.accountNumber}</h3>
@@ -575,20 +593,17 @@ const MT5Dashboard = () => {
                     <p className="text-sm text-gray-600">{account.broker}</p>
                   </div>
 
-                  {/* Main Stats */}
                   <div className="p-4">
                     <div className="mb-4">
                       <p className="text-xs text-gray-500 mb-1">EQUITY</p>
                       <p className="text-2xl font-bold text-blue-600">${(account.equity || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                     </div>
 
-                    {/* P&L Compact Grid */}
                     <div className="mb-4">
                       <p className="text-xs text-gray-600 font-medium mb-2">P&L Performance</p>
                       <PnLCompactGrid account={account} />
                     </div>
 
-                    {/* Bot & Position Info */}
                     <div className="pt-3 border-t space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600 flex items-center gap-1">
@@ -610,7 +625,6 @@ const MT5Dashboard = () => {
                       </div>
                     </div>
 
-                    {/* View Details Button */}
                     <button className="w-full mt-4 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
                       View Details →
                     </button>
@@ -621,7 +635,6 @@ const MT5Dashboard = () => {
           </div>
         </div>
 
-        {/* Compact VPS Overview */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold mb-4">VPS Status</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
