@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { TrendingUp, TrendingDown, Activity, AlertCircle, Server, DollarSign, Target, Percent } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, AlertCircle, Server, DollarSign, Target, Percent, Calendar } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue } from 'firebase/database';
 
-// ============================================================
-// FIREBASE CONFIG - THAY ĐỔI PHẦN NÀY VỚI THÔNG TIN CỦA BẠN
-// ============================================================
+// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyADDFHKPVP2znTDSZVhcRBYG-1sjxG5XvA",
   authDomain: "mt5-dashboard-6b7a3.firebaseapp.com",
@@ -17,7 +15,6 @@ const firebaseConfig = {
   appId: "1:673396325962:web:433d5cec01c041f6eef0b3"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
@@ -33,12 +30,14 @@ const MT5Dashboard = () => {
     totalPnLToday: 0,
     totalPnLWeek: 0,
     totalPnLMonth: 0,
+    totalPnL3Months: 0,
+    totalPnLYear: 0,
+    totalPnLAllTime: 0,
     avgWinRate: 0,
     totalOpenPositions: 0,
     avgDrawdown: 0
   });
 
-  // Firebase Realtime Listener
   useEffect(() => {
     const vpsRef = ref(database, 'vps');
     
@@ -87,15 +86,19 @@ const MT5Dashboard = () => {
 
       for (let a = 1; a <= accountsPerVps; a++) {
         const accountNum = (v - 1) * accountsPerVps + a;
+        const baseEquity = 5000 + Math.random() * 5000;
         const account = {
           id: `account-${accountNum}`,
           accountNumber: `10000${accountNum}`,
           broker: 'IC Markets',
-          balance: 5000 + Math.random() * 5000,
-          equity: 5000 + Math.random() * 5000,
-          pnlToday: (Math.random() - 0.3) * 500,
-          pnlWeek: (Math.random() - 0.2) * 1500,
-          pnlMonth: (Math.random() - 0.1) * 3000,
+          balance: baseEquity,
+          equity: baseEquity + (Math.random() - 0.5) * 500,
+          pnlToday: (Math.random() - 0.3) * 200,
+          pnlWeek: (Math.random() - 0.2) * 600,
+          pnlMonth: (Math.random() - 0.1) * 1200,
+          pnl3Months: (Math.random() - 0.05) * 2500,
+          pnlYear: (Math.random() + 0.1) * 4000,
+          pnlAllTime: (Math.random() + 0.2) * 6000,
           drawdown: Math.random() * 15,
           openPositions: Math.floor(Math.random() * 5),
           bots: []
@@ -150,6 +153,9 @@ const MT5Dashboard = () => {
     let totalPnLToday = 0;
     let totalPnLWeek = 0;
     let totalPnLMonth = 0;
+    let totalPnL3Months = 0;
+    let totalPnLYear = 0;
+    let totalPnLAllTime = 0;
     let totalWinRate = 0;
     let totalOpenPositions = 0;
     let totalDrawdown = 0;
@@ -162,6 +168,9 @@ const MT5Dashboard = () => {
         totalPnLToday += acc.pnlToday || 0;
         totalPnLWeek += acc.pnlWeek || 0;
         totalPnLMonth += acc.pnlMonth || 0;
+        totalPnL3Months += acc.pnl3Months || 0;
+        totalPnLYear += acc.pnlYear || 0;
+        totalPnLAllTime += acc.pnlAllTime || 0;
         totalOpenPositions += acc.openPositions || 0;
         totalDrawdown += acc.drawdown || 0;
         
@@ -181,13 +190,15 @@ const MT5Dashboard = () => {
       totalPnLToday: totalPnLToday.toFixed(2),
       totalPnLWeek: totalPnLWeek.toFixed(2),
       totalPnLMonth: totalPnLMonth.toFixed(2),
+      totalPnL3Months: totalPnL3Months.toFixed(2),
+      totalPnLYear: totalPnLYear.toFixed(2),
+      totalPnLAllTime: totalPnLAllTime.toFixed(2),
       avgWinRate: botCount > 0 ? (totalWinRate / botCount).toFixed(1) : 0,
       totalOpenPositions,
       avgDrawdown: accountCount > 0 ? (totalDrawdown / accountCount).toFixed(1) : 0
     });
   };
 
-  // Flatten all accounts with VPS info
   const allAccounts = vpsData.flatMap(vps => 
     vps.accounts.map(account => ({
       ...account,
@@ -197,7 +208,6 @@ const MT5Dashboard = () => {
     }))
   );
 
-  // Filter and sort accounts
   const filteredAccounts = allAccounts
     .filter(acc => filterVps === 'all' || acc.vpsId === filterVps)
     .sort((a, b) => {
@@ -236,8 +246,52 @@ const MT5Dashboard = () => {
     </div>
   );
 
+  const PnLCompactGrid = ({ account }) => {
+    const pnlData = [
+      { label: 'Today', value: account.pnlToday || 0 },
+      { label: 'Week', value: account.pnlWeek || 0 },
+      { label: 'Month', value: account.pnlMonth || 0 },
+      { label: '3M', value: account.pnl3Months || 0 },
+      { label: 'Year', value: account.pnlYear || 0 },
+      { label: 'All', value: account.pnlAllTime || 0 }
+    ];
+
+    const getColorClass = (value) => {
+      if (value >= 500) return 'text-green-700 bg-green-100';
+      if (value >= 100) return 'text-green-600 bg-green-50';
+      if (value > 0) return 'text-green-500 bg-green-50';
+      if (value === 0) return 'text-gray-600 bg-gray-50';
+      if (value >= -100) return 'text-red-500 bg-red-50';
+      if (value >= -500) return 'text-red-600 bg-red-50';
+      return 'text-red-700 bg-red-100';
+    };
+
+    return (
+      <div className="grid grid-cols-3 gap-2">
+        {pnlData.map((item, idx) => (
+          <div key={idx} className={`rounded p-2 ${getColorClass(item.value)}`}>
+            <p className="text-xs opacity-70 mb-0.5">{item.label}</p>
+            <p className="font-bold text-sm">
+              {item.value >= 0 ? '+' : ''}{item.value.toFixed(0)}
+            </p>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const AccountDetails = ({ account, vpsName }) => {
     const isProfit = (account.pnlToday || 0) >= 0;
+    
+    // Prepare chart data for P&L timeline
+    const pnlChartData = [
+      { period: 'Today', value: account.pnlToday || 0 },
+      { period: 'Week', value: account.pnlWeek || 0 },
+      { period: 'Month', value: account.pnlMonth || 0 },
+      { period: '3 Months', value: account.pnl3Months || 0 },
+      { period: 'Year', value: account.pnlYear || 0 },
+      { period: 'All-time', value: account.pnlAllTime || 0 }
+    ];
     
     return (
       <div className="bg-white rounded-lg shadow-lg p-6">
@@ -272,6 +326,53 @@ const MT5Dashboard = () => {
           <div className="bg-orange-50 rounded-lg p-4">
             <p className="text-sm text-gray-600">Drawdown</p>
             <p className="text-xl font-bold text-orange-600">{(account.drawdown || 0).toFixed(1)}%</p>
+          </div>
+        </div>
+
+        {/* P&L Timeline Chart */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 mb-6">
+          <div className="flex items-center mb-4">
+            <Calendar className="text-indigo-600 mr-2" size={20} />
+            <h3 className="text-xl font-semibold text-gray-800">P&L Performance Timeline</h3>
+          </div>
+          
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={pnlChartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <XAxis dataKey="period" stroke="#666" />
+              <YAxis stroke="#666" />
+              <Tooltip 
+                formatter={(value) => `$${value.toFixed(2)}`}
+                contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '8px' }}
+              />
+              <Bar 
+                dataKey="value" 
+                fill="#4f46e5"
+                radius={[8, 8, 0, 0]}
+              >
+                {pnlChartData.map((entry, index) => (
+                  <rect 
+                    key={`bar-${index}`}
+                    fill={entry.value >= 0 ? '#10b981' : '#ef4444'}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+
+          {/* Detailed P&L Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+            {pnlChartData.map((item, idx) => {
+              const isPositive = item.value >= 0;
+              return (
+                <div key={idx} className={`rounded-lg p-3 ${isPositive ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} border`}>
+                  <p className="text-xs text-gray-600 mb-1">{item.period}</p>
+                  <p className={`text-lg font-bold ${isPositive ? 'text-green-700' : 'text-red-700'}`}>
+                    {isPositive ? '+' : ''}${item.value.toFixed(2)}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -374,8 +475,8 @@ const MT5Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto p-6">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {/* Enhanced Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard 
             title="Total Equity"
             value={`$${totalStats.totalEquity}`}
@@ -385,16 +486,16 @@ const MT5Dashboard = () => {
           <StatCard 
             title="P&L Today"
             value={`${parseFloat(totalStats.totalPnLToday) >= 0 ? '+' : ''}$${totalStats.totalPnLToday}`}
-            subtitle={`Week: ${parseFloat(totalStats.totalPnLWeek) >= 0 ? '+' : ''}$${totalStats.totalPnLWeek}`}
+            subtitle={`Month: ${parseFloat(totalStats.totalPnLMonth) >= 0 ? '+' : ''}$${totalStats.totalPnLMonth}`}
             icon={TrendingUp}
             color={parseFloat(totalStats.totalPnLToday) >= 0 ? '#10b981' : '#ef4444'}
           />
           <StatCard 
-            title="Avg Win Rate"
-            value={`${totalStats.avgWinRate}%`}
-            subtitle="Across all bots"
-            icon={Target}
-            color="#3b82f6"
+            title="P&L Year"
+            value={`${parseFloat(totalStats.totalPnLYear) >= 0 ? '+' : ''}$${totalStats.totalPnLYear}`}
+            subtitle={`All-time: ${parseFloat(totalStats.totalPnLAllTime) >= 0 ? '+' : ''}$${totalStats.totalPnLAllTime}`}
+            icon={Calendar}
+            color="#8b5cf6"
           />
           <StatCard 
             title="Avg Drawdown"
@@ -481,23 +582,10 @@ const MT5Dashboard = () => {
                       <p className="text-2xl font-bold text-blue-600">${(account.equity || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                      <div>
-                        <p className="text-xs text-gray-500">Today</p>
-                        <p className={`font-bold text-sm ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
-                          {isProfit ? '+' : ''}{(account.pnlToday || 0).toFixed(0)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Week</p>
-                        <p className={`font-bold text-sm ${(account.pnlWeek || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {(account.pnlWeek || 0) >= 0 ? '+' : ''}{(account.pnlWeek || 0).toFixed(0)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Drawdown</p>
-                        <p className="font-bold text-sm text-orange-600">{(account.drawdown || 0).toFixed(1)}%</p>
-                      </div>
+                    {/* P&L Compact Grid */}
+                    <div className="mb-4">
+                      <p className="text-xs text-gray-600 font-medium mb-2">P&L Performance</p>
+                      <PnLCompactGrid account={account} />
                     </div>
 
                     {/* Bot & Position Info */}
@@ -515,6 +603,10 @@ const MT5Dashboard = () => {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Positions</span>
                         <span className="font-semibold text-purple-600">{account.openPositions || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Drawdown</span>
+                        <span className="font-semibold text-orange-600">{(account.drawdown || 0).toFixed(1)}%</span>
                       </div>
                     </div>
 
